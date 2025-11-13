@@ -8,7 +8,8 @@ ENCRYPTION_EXTENSION = ".MrRobot"
 AES_KEY_SIZE = 32 
 RSA_KEY_SIZE = 4096  
 MAX_FILE_SIZE = 100 * 1024 * 1024  
-MAX_RETRIES = 3  
+MAX_RETRIES = 3 
+PUBLIC_KEY =    "اومبعد ساهل " 
 
 # ==================== Communication Settings ====================
 SERVER_IP = "IDK"  
