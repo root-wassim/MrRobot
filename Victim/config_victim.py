@@ -69,7 +69,7 @@ LINUX_EXCLUDED_DIRS = [
     
     '/bin', '/sbin', '/usr/bin', '/usr/sbin', '/lib', '/lib64',
     '/etc', '/var', '/run', '/proc', '/sys', '/root', '/boot',
-    '/dev', '/mnt', '/media'
+    '/dev'
 ]
 
 LINUX_EXCLUDED_FILES = [
