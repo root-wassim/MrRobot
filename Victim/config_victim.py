@@ -9,7 +9,7 @@ AES_KEY_SIZE = 32
 RSA_KEY_SIZE = 4096  
 MAX_FILE_SIZE = 100 * 1024 * 1024  
 MAX_RETRIES = 3 
-PUBLIC_KEY =    "اومبعد ساهل " 
+PUBLIC_KEY =   get_public_key ()
 FILE_HEADER_MAGIC = b'MRBT'        
 FILE_FORMAT_VERSION = 2           
 AES_KEY_SIZE_PER_FILE = 32         
@@ -206,3 +206,7 @@ def validate_file_for_encryption(file_path):
         return False
     
 
+def get_public_key ():
+
+    with open("public")
+    pass
