@@ -1,0 +1,52 @@
+# Cryptography and Security
+pycryptodome>=3.17.0          # RSA/AES encryption implementation
+cryptography>=41.0.0          # Alternative crypto library
+rsa>=4.9                      # RSA key generation and management
+hashlib                       # Built-in Python hashing (no install needed)
+
+# GUI and Interface
+tkinter>=8.6                  # Built-in Python GUI (Windows/macOS/Linux)
+pillow>=10.0.0                # Image processing for QR codes and background
+pygame>=2.5.0                 # Audio playback for ransom interface
+qrcode>=7.4                   # Bitcoin QR code generation
+
+# System Interaction
+psutil>=5.9.0                 # Process and system monitoring
+pywin32>=306                  # Windows API access (Windows only)
+ctypes                       # Built-in Windows API calls
+winsound                     # Built-in Windows sound (Windows only)
+os-sys>=2.0.1                 # Cross-platform system operations
+
+# Network and Communication
+requests>=2.31.0              # HTTP requests for MediaFire download
+urllib3>=2.0.0                # URL handling
+socket                       # Built-in network communication
+threading                    # Built-in multi-threading
+select                       # Built-in I/O multiplexing
+
+# Data Processing
+json                         # Built-in JSON handling
+sqlite3                      # Built-in database (victims.db)
+struct                       # Built-in binary data packing
+hashlib                      # Built-in cryptographic hashing
+datetime                     # Built-in date/time handling
+time                         # Built-in timing functions
+
+# Compression and Encoding
+gzip                         # Built-in compression
+base64                       # Built-in encoding
+zlib                         # Built-in compression library
+
+# File System Operations
+os                          # Built-in operating system interface
+sys                         # Built-in system parameters
+shutil                      # Built-in high-level file operations
+pathlib                     # Built-in object-oriented filesystem paths
+tempfile                    # Built-in temporary file creation
+
+# Windows-Specific Dependencies (if compiling for Windows)
+# Note: These are only needed for Windows deployment
+windows-curses>=2.3.0        # Terminal UI for Windows
+colorama>=0.4.6              # Cross-platform colored terminal text
+pyinstaller>=5.13.0          # Compilation to standalone executable
+nuitka>=1.7                  # Alternative Python compiler
